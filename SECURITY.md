@@ -106,8 +106,14 @@ puts in the Host header.
   terminates TLS and handles authentication, or run it inside a network segment
   you already trust. Either way, anyone who can reach the port can query it
   within the policy and the database grants.
-- No telemetry, no analytics, no remote assets. The only outbound call is to the
-  configured database.
+- No telemetry, no analytics, no remote assets. The only outbound call made by the
+  server itself is to the configured database.
+- Tooling is a separate matter. `cargo deny check` fetches the RustSec advisory
+  database from a public git repository on the first run and refreshes it on later
+  runs; that is a network call made by the build tooling, not by the gateway. To
+  run the gate offline, use `cargo deny check licenses bans sources` and accept that
+  the advisory check is not part of that run. Say so in the release notes if you
+  publish a build that was gated offline.
 
 ## Audit trail
 

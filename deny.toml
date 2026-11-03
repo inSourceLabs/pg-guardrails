@@ -4,7 +4,10 @@ db-urls = ["https://github.com/RustSec/advisory-db"]
 yanked = "deny"
 
 [bans]
-multiple-versions = "allow"
+# One binary should not carry two copies of the same crate. Warn rather than deny:
+# a transient upstream bump that briefly duplicates a crate surfaces in the gate
+# output instead of breaking the build, and the list stays reviewable.
+multiple-versions = "warn"
 
 [licenses]
 allow = [
