@@ -109,7 +109,8 @@ def check_links(path: Path, text: str) -> None:
         target = target.split("#")[0]
         if not target:
             continue
-        if not (REPO / target).exists():
+        # Relative links resolve against the directory of the file that holds them.
+        if not (path.parent / target).resolve().exists():
             FAILS.append(f"{rel(path)}: link target does not exist: {target}")
     # Inline code paths. Link text is removed first: a path inside a link to
     # another repository is not a path in this one.

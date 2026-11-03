@@ -4,7 +4,7 @@
 #   ./scripts/ci.sh                    # rust gates, licence gate, hygiene
 #   ./scripts/ci.sh fast               # same as the default; needs no database
 #   ./scripts/ci.sh full               # fast + protocol and adversarial checks
-#   ./scripts/ci.sh cross              # cross-target builds (musl, windows-gnu)
+#   ./scripts/ci.sh cross              # cross-target builds plus the Wine gate
 #   ./scripts/ci.sh release            # deterministic source archives and signatures
 #   ./scripts/ci.sh --no-advisories    # skip the RustSec fetch; runs offline
 #
@@ -13,7 +13,8 @@
 # fetching the RustSec advisory database, which --no-advisories turns off.
 #
 # Requires: cargo, rustfmt, clippy, python3. cargo-deny is required for the
-# licence gate. strace is used by the egress gate when available.
+# licence gate. strace is used by the egress gate when available. wine and the
+# x86_64-pc-windows-gnu target are used by the cross mode.
 # Linux and macOS. On Windows use Git Bash.
 
 set -uo pipefail
@@ -228,17 +229,20 @@ if [ "$MODE" = "cross" ]; then
     fi
   done
 
+  echo "--- Windows gate under Wine"
   if have wine; then
-    exe="target/x86_64-pc-windows-gnu/release/pg-guardrails.exe"
-    if [ -f "$exe" ] && wine "$exe" --version 2>/dev/null | grep -q pg-guardrails; then
-      record "windows binary runs under wine" PASS
-      echo "  ok: wine smoke test passed"
+    out="$(bash scripts/windows_check.sh 2>&1)"
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+      record "windows gate under wine" PASS
+      echo "  ok"
     else
-      record "windows binary runs under wine" FAIL "the exe did not run under wine"
+      record "windows gate under wine" FAIL "$(echo "$out" | tail -n 3 | tr '\n' ' ')"
       echo "  FAIL"
     fi
+    echo "$(echo "$out" | sed -n '1,40p')"
   else
-    record "windows binary runs under wine" SKIP "wine is not installed"
+    record "windows gate under wine" SKIP "wine is not installed"
     echo "  SKIP: wine not installed"
   fi
 fi
@@ -259,15 +263,32 @@ if [ "$MODE" = "release" ]; then
     echo "  FAIL"
   fi
 
-  archive() {
+  STAGE="/tmp/pgg-stage-$STAMP"
+  rm -rf "$STAGE"
+  mkdir -p "$STAGE"
+  git archive HEAD | tar -x -C "$STAGE"
+  cp -r "$DIST/LICENSES" "$STAGE/LICENSES"
+  {
+    echo "pg-guardrails $VERSION"
+    echo "commit: $COMMIT"
+    echo "toolchain: $(rustc --version)"
+    echo "build command: cargo build --release"
+    echo "generated: $STAMP"
+    echo ""
+    echo "sha256 of every file in this archive:"
+    cd "$STAGE" && find . -type f -not -name MANIFEST.txt | sort | xargs sha256sum
+  } > "$STAGE/MANIFEST.txt"
+  cd "$ROOT"
+
+  build_archive() {
     # Fixed owner, group and timestamp plus gzip -n: the same tree produces the
     # same bytes, so a verifier can reproduce the archive.
-    tar --format=gnu --owner=0 --group=0 --mtime='2026-01-01T00:00:00Z' -C "$ROOT" -c $(git ls-files) | gzip -n > "$1"
+    tar --format=gnu --owner=0 --group=0 --mtime='2026-01-01T00:00:00Z' -C "$1" -c . | gzip -n > "$2"
   }
 
   name="pg-guardrails-$VERSION"
-  archive "$DIST/$name.tar.gz"
-  archive /tmp/pgg-archive-rebuild.tar.gz
+  build_archive "$STAGE" "$DIST/$name.tar.gz"
+  build_archive "$STAGE" /tmp/pgg-archive-rebuild.tar.gz
   if cmp -s "$DIST/$name.tar.gz" /tmp/pgg-archive-rebuild.tar.gz; then
     record "archive is reproducible" PASS
     echo "  ok: two builds of the same tree give identical bytes"
@@ -277,12 +298,12 @@ if [ "$MODE" = "release" ]; then
   fi
   rm -f /tmp/pgg-archive-rebuild.tar.gz
 
-  if tar -tf "$DIST/$name.tar.gz" | grep -qE '^(target/|demo-db/|reports/|dev/|dist/)'; then
+  if tar -tf "$DIST/$name.tar.gz" | grep -qE '^\./?(target|demo-db|reports|dev|dist)/'; then
     record "archive contents" FAIL "the archive contains build or local work directories"
     echo "  FAIL"
   else
     record "archive contents" PASS
-    echo "  ok: $(tar -tf "$DIST/$name.tar.gz" | wc -l) entries, no local work included"
+    echo "  ok: $(tar -tf "$DIST/$name.tar.gz" | wc -l) entries including the licence texts, no local work included"
   fi
 
   if gpg --batch --detach-sign -a -o "$DIST/$name.tar.gz.asc" "$DIST/$name.tar.gz" >/dev/null 2>&1; then
@@ -299,6 +320,45 @@ if [ "$MODE" = "release" ]; then
   fi
 
   echo "  sha256: $(sha256sum "$DIST/$name.tar.gz" | cut -c1-64)  $name.tar.gz"
+
+  echo "--- binaries"
+  cargo build --release --quiet >/dev/null 2>&1
+  binaries=0
+  for target in x86_64-unknown-linux-gnu x86_64-unknown-linux-musl x86_64-pc-windows-gnu; do
+    if [ "$target" = x86_64-unknown-linux-gnu ]; then
+      src="$ROOT/target/release/pg-guardrails"
+    else
+      src="$ROOT/target/$target/release/pg-guardrails$( [ "$target" = x86_64-pc-windows-gnu ] && echo .exe )"
+    fi
+    if [ ! -f "$src" ]; then
+      echo "  skip: $target (not built; run ./scripts/ci.sh cross)"
+      continue
+    fi
+    out="$DIST/pg-guardrails-$VERSION-$target"
+    cp "$src" "$out"
+    if gpg --batch --detach-sign -a -o "$out.asc" "$out" >/dev/null 2>&1; then
+      sig="signed"
+    else
+      sig="not signed (no cached gpg key)"
+    fi
+    binaries=$((binaries + 1))
+    echo "  $target: $(file -b "$out" | cut -c1-40), $sig"
+  done
+  record "binaries packaged" "$([ "$binaries" -gt 0 ] && echo PASS || echo FAIL)"
+
+  {
+    echo "pg-guardrails $VERSION"
+    echo "commit: $COMMIT"
+    echo "toolchain: $(rustc --version)"
+    echo "generated: $STAMP"
+    echo ""
+    echo "asset | sha256"
+    echo "-----|------"
+    for f in "$DIST"/*.tar.gz "$DIST"/*.asc "$DIST"/pg-guardrails-*; do
+      [ -f "$f" ] && printf '%s | %s\n' "$(basename "$f")" "$(sha256sum "$f" | cut -c1-64)"
+    done
+  } > "$DIST/MANIFEST.txt"
+  echo "  manifest: $DIST/MANIFEST.txt"
 fi
 
 # ---------------------------------------------------------------- cleanup

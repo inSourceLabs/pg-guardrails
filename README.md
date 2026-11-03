@@ -94,6 +94,8 @@ untested: the last two columns say what to expect, not what has been verified.
 | `initdb`, `pg_ctl`, `psql`, `pg_isready` | [`scripts/demo_postgres.sh`](scripts/demo_postgres.sh) only | yes | expected | expected, set `PGBIN` |
 | bash | [`scripts/run.sh`](scripts/run.sh), [`scripts/demo_postgres.sh`](scripts/demo_postgres.sh), [`scripts/ci.sh`](scripts/ci.sh) | GNU bash 5.2 | bash 3.2 ships with macOS and zsh is the default shell; invoke with `bash` | Git Bash or WSL; [`scripts/run.ps1`](scripts/run.ps1) is the native path |
 | python3, standard library only | [`scripts/e2e_check.py`](scripts/e2e_check.py), [`scripts/guardrail_stress.py`](scripts/guardrail_stress.py), [`scripts/hygiene.py`](scripts/hygiene.py) | yes | expected | expected |
+| strace | the egress gate in [`scripts/ci.sh`](scripts/ci.sh) | yes | not available | not available |
+| Wine and mingw-w64 | the Windows gate in [`scripts/windows_check.sh`](scripts/windows_check.sh) | yes | n/a | n/a |
 | `ss`, `netstat` or `lsof` | port collision check in `run.sh` | yes | expected | not available; `run.ps1` uses `Get-NetTCPConnection` |
 
 The gateway itself has no platform-specific code beyond the owner-only 0600 permissions on
@@ -255,7 +257,8 @@ own source so a cross-source join fails by design.
 
 ## Build and test
 
-Every gate runs locally; there is no build service and nothing to configure.
+Every gate runs locally; there is no build service and nothing to configure. Per
+platform build notes are in [`docs/building.md`](docs/building.md).
 
 ```sh
 ./scripts/ci.sh              # rust gates, licence gate, hygiene, egress proof

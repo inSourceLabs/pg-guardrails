@@ -27,9 +27,12 @@ configure on a hosting platform.
 ```sh
 ./scripts/ci.sh              # format, lint, tests, licence gate, hygiene, egress proof
 ./scripts/ci.sh full         # adds the protocol and adversarial suites
-./scripts/ci.sh cross        # musl and windows-gnu builds
+./scripts/ci.sh cross        # musl and windows-gnu builds, then the Wine gate
 ./scripts/ci.sh release      # reproducible source archives plus signatures
 ```
+
+Platform-specific notes, including how to cross-compile and what has actually been
+verified on Windows, are in [`docs/building.md`](docs/building.md).
 
 The same gates one at a time:
 
@@ -92,7 +95,8 @@ design.
   wider bind stays an explicit opt-in in [`src/main.rs`](src/main.rs).
 - Credentials never appear in tool output, in the audit log, in a test fixture
   or in a comment.
-- No outbound network calls from the binary other than the configured database.
+- No outbound network calls from the binary other than the configured database. The
+  egress gate in [`scripts/ci.sh`](scripts/ci.sh) proves it with strace.
 - Any change to the policy engine needs a test that proves a refusal still
   refuses. Refusals are recorded in the audit trail; keep that behaviour.
 - The threat model and the disclosure policy are in [`SECURITY.md`](SECURITY.md).
