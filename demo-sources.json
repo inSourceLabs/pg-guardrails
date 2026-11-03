@@ -1,0 +1,17 @@
+{
+  "sources": [
+    {
+      "id": "demo",
+      "engine": "postgres",
+      "description": "Synthetic branch transactions for the demo",
+      "dsn": "host=127.0.0.1 port=5433 dbname=guardrails_demo user=agent_ro",
+      "timeout_s": 20,
+      "columns_deny": ["phone", "national_id"],
+      "column_formats": [
+        { "name": "amount_kes", "unit": "KES", "decimals": 2 },
+        { "name": "balance_kes", "unit": "KES", "decimals": 2 },
+        { "name": "risk_score", "decimals": 1 }
+      ]
+    }
+  ]
+}

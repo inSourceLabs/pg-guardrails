@@ -1,0 +1,14 @@
+# Build and runtime artefacts
+target/
+demo-db/
+*.log
+*.jsonl
+.env
+.env.local
+
+# Local work, not part of the release
+dev/
+Research_and_Development/
+Admin/
+reports/
+screenshots/

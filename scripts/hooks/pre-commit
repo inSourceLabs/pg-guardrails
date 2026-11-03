@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Pre-commit hook: format, clippy, tests and the licence gate.
+# Enable with: git config core.hooksPath scripts/hooks
+set -euo pipefail
+
+REPO="$(git rev-parse --show-toplevel)"
+cd "$REPO"
+
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+cargo test --quiet
+cargo deny check licenses advisories bans sources
+
+# Nothing internal may reach a commit.
+if git status --short | grep -E '^\s*[AM]*\s*(dev/|demo-db/|Research_and_Development/|Admin/|reports/|screenshots/|.*\.jsonl$)'; then
+  echo "refusing to commit: internal work is staged"
+  exit 1
+fi
+
+echo "pre-commit checks passed"

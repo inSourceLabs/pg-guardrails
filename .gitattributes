@@ -1,0 +1,10 @@
+# Keep LF line endings across platforms so scripts and SQL fixtures behave the
+# same on a Windows clone.
+* text=auto eol=lf
+*.sql text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+*.md text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
