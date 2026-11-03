@@ -18,7 +18,7 @@ path. Every call and every refusal is written to an audit log.
 
 A statement has to pass all of them before a row reaches the model.
 
-1. **Statement policy** (`src/policy.rs`). Pure function, no database needed.
+1. **Statement policy** ([`src/policy.rs`](src/policy.rs)). Pure function, no database needed.
    Quoted literals are stripped, then: one statement only, leading keyword must
    be `SELECT`, `WITH`, `EXPLAIN`, `DESCRIBE`, `SHOW`, `VALUES` or `TABLE`, and
    no blocked keyword anywhere (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `CREATE`,
@@ -89,11 +89,11 @@ untested: the last two columns say what to expect, not what has been verified.
 
 | Component | Needed for | Linux (tested) | macOS (not tested) | Windows (not tested) |
 | --- | --- | --- | --- | --- |
-| Rust 1.99, pinned in `rust-toolchain.toml` | the gateway | yes | expected, rustup supports it | expected, rustup supports it |
+| Rust 1.99, pinned in [`rust-toolchain.toml`](rust-toolchain.toml) | the gateway | yes | expected, rustup supports it | expected, rustup supports it |
 | PostgreSQL 16 or newer | the database | yes, 17 | expected | expected |
-| `initdb`, `pg_ctl`, `psql`, `pg_isready` | `scripts/demo_postgres.sh` only | yes | expected | expected, set `PGBIN` |
-| bash | `scripts/run.sh`, `scripts/demo_postgres.sh` | GNU bash 5.2 | bash 3.2 ships with macOS and zsh is the default shell; invoke with `bash` | Git Bash or WSL; `scripts/run.ps1` is the native path |
-| python3, standard library only | `scripts/e2e_check.py`, `scripts/guardrail_stress.py` | yes | expected | expected |
+| `initdb`, `pg_ctl`, `psql`, `pg_isready` | [`scripts/demo_postgres.sh`](scripts/demo_postgres.sh) only | yes | expected | expected, set `PGBIN` |
+| bash | [`scripts/run.sh`](scripts/run.sh), [`scripts/demo_postgres.sh`](scripts/demo_postgres.sh), [`scripts/ci.sh`](scripts/ci.sh) | GNU bash 5.2 | bash 3.2 ships with macOS and zsh is the default shell; invoke with `bash` | Git Bash or WSL; [`scripts/run.ps1`](scripts/run.ps1) is the native path |
+| python3, standard library only | [`scripts/e2e_check.py`](scripts/e2e_check.py), [`scripts/guardrail_stress.py`](scripts/guardrail_stress.py), [`scripts/hygiene.py`](scripts/hygiene.py) | yes | expected | expected |
 | `ss`, `netstat` or `lsof` | port collision check in `run.sh` | yes | expected | not available; `run.ps1` uses `Get-NetTCPConnection` |
 
 The gateway itself has no platform-specific code beyond the owner-only 0600 permissions on
@@ -105,16 +105,17 @@ call other than the database you register.
 Neither platform has been tested here.
 
 - `cargo build` should work on both; the dependency tree is pure Rust.
-- `scripts/run.ps1` is the Windows entry point. It expects `initdb`, `pg_ctl` and `psql` on
-  PATH and checks the port with `Get-NetTCPConnection`.
-- `scripts/demo_postgres.sh` is bash. Without it, create the cluster yourself and point
+- [`scripts/run.ps1`](scripts/run.ps1) is the Windows entry point. It expects `initdb`, `pg_ctl`
+  and `psql` on PATH and checks the port with `Get-NetTCPConnection`.
+- [`scripts/demo_postgres.sh`](scripts/demo_postgres.sh) is bash. Without it, create the cluster
+  yourself and point
   `--config` at a registry you wrote.
 - The 0600 permission model is a Unix feature. On Windows, set NTFS ACLs on the registry and
   audit files instead.
 
 ## Agent clients
 
-`AGENTS.md` is the guide for an agent working in this repository: how to build,
+[`AGENTS.md`](AGENTS.md) is the guide for an agent working in this repository: how to build,
 what to test, what not to touch.
 
 An agent runs commands on your machine, so review them. The registry file it
@@ -174,7 +175,7 @@ a query. `--format json` returns the raw payload as text instead.
       "timeout_s": 20,
       "columns_deny": ["phone", "national_id"],
       "column_formats": [
-        { "name": "amount_kes", "unit": "KES", "decimals": 2 },
+        { "name": "amount", "unit": "GBP", "decimals": 2 },
         { "name": "risk_score", "decimals": 1 },
         { "name": "mom_change", "unit": "%", "decimals": 1, "delta": true }
       ]
@@ -197,7 +198,7 @@ pg-guardrails source list
 pg-guardrails source add --id branch \
   --dsn-file ./branch.dsn \
   --deny phone,national_id \
-  --format amount_kes:unit=KES:decimals=2 \
+  --format amount:unit=GBP:decimals=2 \
   --timeout 20
 pg-guardrails source test --id branch
 pg-guardrails source remove --id branch
@@ -218,7 +219,9 @@ The demo tables are small.
 [`synthetic-financial-data`](https://github.com/inSourceLabs/synthetic-financial-data)
 generates retail banking, non-life insurance and life underwriting datasets:
 real foreign keys, SQL plus one CSV per table, and no gateway required to build
-them. Load them with that repo's `scripts/load.sh`, which creates one
+them. Load them with
+[`scripts/load.sh`](https://github.com/inSourceLabs/synthetic-financial-data/blob/main/scripts/load.sh),
+which creates one
 database per dataset with a SELECT-only role, then register each dataset as its
 own source so a cross-source join fails by design.
 
@@ -248,9 +251,20 @@ own source so a cross-source join fails by design.
 - The statement policy is a defence in depth, not the boundary. The database
   grants are the boundary. If you give the connecting role write grants, do not
   expect the policy to be enough.
-- See `SECURITY.md` for the disclosure policy and the threat model.
+- See [`SECURITY.md`](SECURITY.md) for the disclosure policy and the threat model.
 
 ## Build and test
+
+Every gate runs locally; there is no build service and nothing to configure.
+
+```sh
+./scripts/ci.sh              # rust gates, licence gate, hygiene, egress proof
+./scripts/ci.sh full         # also the protocol and adversarial suites
+./scripts/ci.sh cross        # musl and windows-gnu builds
+./scripts/ci.sh release      # reproducible source archives and signatures
+```
+
+The individual gates, if you want to run one on its own:
 
 ```sh
 cargo build
@@ -262,6 +276,7 @@ python3 scripts/license_report.py                        # third-party licence i
 ./scripts/demo_postgres.sh
 python3 scripts/e2e_check.py        # protocol checks, stdio + HTTP
 python3 scripts/guardrail_stress.py # policy refusals, caps, masking, renders
+bash scripts/egress_check.sh        # strace: the gateway only reaches the database
 ```
 
 ## Why Rust
@@ -275,11 +290,11 @@ by tests against captured wire bytes.
 
 Apache-2.0. Every dependency in the transitive tree is permissive
 (MIT, Apache-2.0, BSD, ISC, Zlib, CC0, Unicode-3.0, public domain). The gate is
-`deny.toml` and `cargo deny check`.
+[`deny.toml`](deny.toml) and `cargo deny check`.
 
-`NOTICE` lists every crate in `Cargo.lock` with its licence, and
-`scripts/license_report.py` regenerates it offline from the lock file and the local
-cargo registry. Four crates offer a non-permissive alternative alongside a
-permissive one (`r-efi` offers LGPL-2.1-or-later; `ryu`, `wasite` and `whoami`
-offer BSL-1.0). This project takes the MIT or Apache-2.0 option in every case, and
-the NOTICE file says so explicitly.
+[`NOTICE`](NOTICE) lists every crate in [`Cargo.lock`](Cargo.lock) with its licence,
+and [`scripts/license_report.py`](scripts/license_report.py) regenerates it offline
+from the lock file and the local cargo registry. Four crates offer a non-permissive
+alternative alongside a permissive one (`r-efi` offers LGPL-2.1-or-later; `ryu`,
+`wasite` and `whoami` offer BSL-1.0). This project takes the MIT or Apache-2.0
+option in every case, and the NOTICE file says so explicitly.

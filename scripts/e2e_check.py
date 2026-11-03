@@ -141,7 +141,7 @@ def run_checks(send, label):
              "params": {"name": "describe", "arguments": {"source": "demo", "table": "transactions"}}})
     payload = r["result"].get("structuredContent") or json.loads(text_of(r["result"]))
     cols = [c["name"] for c in payload["columns"]]
-    check(f"{label}: describe returns typed columns", "amount_kes" in cols, str(cols))
+    check(f"{label}: describe returns typed columns", "amount" in cols, str(cols))
     check(f"{label}: describe reports row count", payload["row_count"] > 0, str(payload["row_count"]))
 
     r = send({"jsonrpc": "2.0", "id": 6, "method": "tools/call",
@@ -262,12 +262,12 @@ def run_checks(send, label):
              "params": {"name": "query",
                         "arguments": {"source": "demo",
                                      "sql": "SELECT c.customer_id, c.full_name, c.county, c.segment, "
-                                           "a.account_id, a.account_type, a.balance_kes, a.opened_date, "
-                                           "a.status, t.txn_id, t.channel, t.amount_kes, t.direction, "
+                                           "a.account_id, a.account_type, a.balance, a.opened_date, "
+                                           "a.status, t.txn_id, t.channel, t.amount, t.direction, "
                                            "t.status, t.risk_score FROM customers c "
                                            "JOIN accounts a ON a.customer_id = c.customer_id "
                                            "JOIN transactions t ON t.account_id = a.account_id "
-                                           "ORDER BY t.amount_kes DESC LIMIT 3"}}})
+                                           "ORDER BY t.amount DESC LIMIT 3"}}})
     text = text_of(r["result"])
     payload = r["result"]["structuredContent"]
     header = next((line for line in text.splitlines() if line.startswith("|")), "")

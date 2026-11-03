@@ -8,8 +8,8 @@
       "timeout_s": 20,
       "columns_deny": ["phone", "national_id"],
       "column_formats": [
-        { "name": "amount_kes", "unit": "KES", "decimals": 2 },
-        { "name": "balance_kes", "unit": "KES", "decimals": 2 },
+        { "name": "amount", "unit": "GBP", "decimals": 2 },
+        { "name": "balance", "unit": "GBP", "decimals": 2 },
         { "name": "risk_score", "decimals": 1 }
       ]
     }

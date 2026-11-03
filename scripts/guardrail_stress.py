@@ -189,7 +189,7 @@ def main():
         check("unicode survives the render", "😀" in r["result"]["content"][0]["text"], "")
 
         # Rendering shape: what a chat client and a model's context window see.
-        r = query("SELECT txn_id, amount_kes, channel, status, risk_score, direction FROM transactions",
+        r = query("SELECT txn_id, amount, channel, status, risk_score, direction FROM transactions",
                   limit=500)
         text = r["result"]["content"][0]["text"]
         table_lines = [l for l in text.splitlines() if l.startswith("|")]
@@ -199,10 +199,10 @@ def main():
         check("a 200 row table stays a sane size for a context window",
               len(text) < 25000, f"{len(text)} chars")
 
-        r = query("SELECT amount_kes FROM transactions WHERE amount_kes > 10000 LIMIT 2")
+        r = query("SELECT account_id, balance FROM accounts WHERE balance > 1000 LIMIT 2")
         text = r["result"]["content"][0]["text"]
         check("declared money columns render grouped with their unit",
-              "KES" in text and "," in text, text[:160])
+              "GBP" in text and "," in text, text[:160])
 
         r = query("SELECT customer_id FROM customers WHERE credit_score > 10000")
         text = r["result"]["content"][0]["text"]
@@ -230,7 +230,7 @@ def main():
             ("list_sources", {}),
             ("schema", {"source": "demo"}),
             ("describe", {"source": "demo", "table": "accounts"}),
-            ("query", {"source": "demo", "sql": "SELECT txn_id, amount_kes FROM transactions LIMIT 5"}),
+            ("query", {"source": "demo", "sql": "SELECT txn_id, amount FROM transactions LIMIT 5"}),
             ("audit", {"limit": 5}),
         ):
             text = call(name, args)["result"]["content"][0]["text"]

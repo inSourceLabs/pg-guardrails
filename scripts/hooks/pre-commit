@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
-# Pre-commit hook: format, clippy, tests and the licence gate.
+# Pre-commit hook: the same gates as scripts/ci.sh, without the integration
+# suites (those need a database and take longer).
 # Enable with: git config core.hooksPath scripts/hooks
 set -euo pipefail
 
 REPO="$(git rev-parse --show-toplevel)"
 cd "$REPO"
 
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test --quiet
-cargo deny check licenses advisories bans sources
+# Offline: the advisory database fetch is left to the full run of ci.sh.
+bash scripts/ci.sh fast --no-advisories --no-log
 
 # Nothing internal may reach a commit.
 if git status --short | grep -E '^\s*[AM]*\s*(dev/|demo-db/|Research_and_Development/|Admin/|reports/|screenshots/|.*\.jsonl$)'; then

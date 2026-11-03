@@ -246,14 +246,14 @@ mod tests {
     fn declared_currency_is_grouped_and_suffixed() {
         let money = ColumnFormat {
             name: "amount".to_string(),
-            unit: "KES".to_string(),
+            unit: "GBP".to_string(),
             decimals: Some(2),
             group: true,
             delta: false,
         };
-        assert_eq!(cell(&json!(1234567), Some(&money)), "1,234,567.00 KES");
-        assert_eq!(cell(&json!(-45.5), Some(&money)), "-45.50 KES");
-        assert_eq!(cell(&json!(0.999), Some(&money)), "1.00 KES");
+        assert_eq!(cell(&json!(1234567), Some(&money)), "1,234,567.00 GBP");
+        assert_eq!(cell(&json!(-45.5), Some(&money)), "-45.50 GBP");
+        assert_eq!(cell(&json!(0.999), Some(&money)), "1.00 GBP");
     }
 
     #[test]

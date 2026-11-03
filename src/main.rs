@@ -151,7 +151,7 @@ enum SourceAction {
         #[arg(
             long,
             value_delimiter = ',',
-            help = "Presentation rules, e.g. --format amount:unit=KES:decimals=2"
+            help = "Presentation rules, e.g. --format amount:unit=GBP:decimals=2"
         )]
         format: Vec<String>,
     },
@@ -405,7 +405,7 @@ fn parse_format(spec: &str) -> Result<ColumnFormat, String> {
     let parts: Vec<&str> = spec.split(':').collect();
     if parts[0].is_empty() {
         return Err(format!(
-            "bad --format '{spec}'; expected name:unit=KES:decimals=2"
+            "bad --format '{spec}'; expected name:unit=<unit>:decimals=<number>"
         ));
     }
     let mut f = ColumnFormat {

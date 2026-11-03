@@ -1,5 +1,8 @@
 # Security
 
+What the server does and how it is built is in [`README.md`](README.md). The rules
+for working on the code are in [`AGENTS.md`](AGENTS.md).
+
 ## What this server is
 
 A governed, read-only gateway between an agent and a database. The agent never

@@ -1,6 +1,7 @@
 # Build and runtime artefacts
 target/
 demo-db/
+dist/
 *.log
 *.jsonl
 .env

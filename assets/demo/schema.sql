@@ -17,7 +17,7 @@ CREATE TABLE accounts (
     account_id   INTEGER PRIMARY KEY,
     customer_id  INTEGER NOT NULL REFERENCES customers(customer_id),
     account_type TEXT NOT NULL,
-    balance_kes  BIGINT NOT NULL,
+    balance      NUMERIC(12,2) NOT NULL,
     opened_date  DATE NOT NULL,
     status       TEXT NOT NULL
 );
@@ -27,7 +27,7 @@ CREATE TABLE transactions (
     account_id  INTEGER NOT NULL REFERENCES accounts(account_id),
     ts          TIMESTAMPTZ NOT NULL,
     channel     TEXT NOT NULL,
-    amount_kes  BIGINT NOT NULL,
+    amount      NUMERIC(12,2) NOT NULL,
     direction   TEXT NOT NULL CHECK (direction IN ('in','out')),
     status      TEXT NOT NULL,
     risk_score  NUMERIC(4,1) NOT NULL
