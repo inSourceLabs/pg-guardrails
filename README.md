@@ -35,36 +35,6 @@ A statement has to pass all of them before a row reaches the model.
 Everything is recorded in an append-only audit log: one JSON line per call,
 refusals included. Row values are never stored.
 
-## Requirements
-
-Tested on Linux x86_64 (Rust 1.99.1, PostgreSQL 17, GNU bash 5.2). macOS and Windows are
-untested: the last two columns say what to expect, not what has been verified.
-
-| Component | Needed for | Linux (tested) | macOS (not tested) | Windows (not tested) |
-| --- | --- | --- | --- | --- |
-| Rust 1.99, pinned in `rust-toolchain.toml` | the gateway | yes | expected, rustup supports it | expected, rustup supports it |
-| PostgreSQL 16 or newer | the database | yes, 17 | expected | expected |
-| `initdb`, `pg_ctl`, `psql`, `pg_isready` | `scripts/demo_postgres.sh` only | yes | expected | expected, set `PGBIN` |
-| bash | `scripts/run.sh`, `scripts/demo_postgres.sh` | GNU bash 5.2 | bash 3.2 ships with macOS and zsh is the default shell; invoke with `bash` | Git Bash or WSL; `scripts/run.ps1` is the native path |
-| python3, standard library only | `scripts/e2e_check.py`, `scripts/guardrail_stress.py` | yes | expected | expected |
-| `ss`, `netstat` or `lsof` | port collision check in `run.sh` | yes | expected | not available; `run.ps1` uses `Get-NetTCPConnection` |
-
-The gateway itself has no platform-specific code beyond the owner-only 0600 permissions on
-registry and audit files, which are guarded by `cfg(unix)`. No CDN, no telemetry, no network
-call other than the database you register.
-
-### Windows and macOS
-
-Neither platform has been tested here.
-
-- `cargo build` should work on both; the dependency tree is pure Rust.
-- `scripts/run.ps1` is the Windows entry point. It expects `initdb`, `pg_ctl` and `psql` on
-  PATH and checks the port with `Get-NetTCPConnection`.
-- `scripts/demo_postgres.sh` is bash. Without it, create the cluster yourself and point
-  `--config` at a registry you wrote.
-- The 0600 permission model is a Unix feature. On Windows, set NTFS ACLs on the registry and
-  audit files instead.
-
 ## Quick start
 
 ```sh
@@ -112,6 +82,36 @@ Clients also differ in what they read back. Some use `structuredContent`, others
 render the text block only. The text is written to survive both: a summary line,
 then notes, then a Markdown table.
 
+## Requirements
+
+Tested on Linux x86_64 (Rust 1.99.1, PostgreSQL 17, GNU bash 5.2). macOS and Windows are
+untested: the last two columns say what to expect, not what has been verified.
+
+| Component | Needed for | Linux (tested) | macOS (not tested) | Windows (not tested) |
+| --- | --- | --- | --- | --- |
+| Rust 1.99, pinned in `rust-toolchain.toml` | the gateway | yes | expected, rustup supports it | expected, rustup supports it |
+| PostgreSQL 16 or newer | the database | yes, 17 | expected | expected |
+| `initdb`, `pg_ctl`, `psql`, `pg_isready` | `scripts/demo_postgres.sh` only | yes | expected | expected, set `PGBIN` |
+| bash | `scripts/run.sh`, `scripts/demo_postgres.sh` | GNU bash 5.2 | bash 3.2 ships with macOS and zsh is the default shell; invoke with `bash` | Git Bash or WSL; `scripts/run.ps1` is the native path |
+| python3, standard library only | `scripts/e2e_check.py`, `scripts/guardrail_stress.py` | yes | expected | expected |
+| `ss`, `netstat` or `lsof` | port collision check in `run.sh` | yes | expected | not available; `run.ps1` uses `Get-NetTCPConnection` |
+
+The gateway itself has no platform-specific code beyond the owner-only 0600 permissions on
+registry and audit files, which are guarded by `cfg(unix)`. No CDN, no telemetry, no network
+call other than the database you register.
+
+### Windows and macOS
+
+Neither platform has been tested here.
+
+- `cargo build` should work on both; the dependency tree is pure Rust.
+- `scripts/run.ps1` is the Windows entry point. It expects `initdb`, `pg_ctl` and `psql` on
+  PATH and checks the port with `Get-NetTCPConnection`.
+- `scripts/demo_postgres.sh` is bash. Without it, create the cluster yourself and point
+  `--config` at a registry you wrote.
+- The 0600 permission model is a Unix feature. On Windows, set NTFS ACLs on the registry and
+  audit files instead.
+
 ## Agent clients
 
 `AGENTS.md` is the guide for an agent working in this repository: how to build,
@@ -149,6 +149,15 @@ declared format is printed exactly as the database returned it.
 
 Rendering runs no SQL, converts no value, makes no network call, and cannot fail
 a query. `--format json` returns the raw payload as text instead.
+
+## Not included
+
+- No write path.
+- No connection pooling: each call opens its own connection.
+- Postgres only. The policy is engine-neutral and the dialect enum has
+  SQLite/DuckDB/MySQL/MSSQL entries, but only Postgres executes, and the registry
+  rejects other engines.
+- No dashboards, no web UI.
 
 ## Registry file
 
@@ -205,11 +214,13 @@ reaches the terminal.
 
 ## Datasets for testing
 
-The demo tables are small. `synthetic-financial-data` generates retail banking,
-non-life insurance and life underwriting datasets: millions of cells, real
-foreign keys, SQL plus one CSV per table, no gateway required. Load them into
-Postgres and register each dataset as its own source, so a cross-source join
-fails by design.
+The demo tables are small.
+[`synthetic-financial-data`](https://github.com/inSourceLabs/synthetic-financial-data)
+generates retail banking, non-life insurance and life underwriting datasets:
+real foreign keys, SQL plus one CSV per table, and no gateway required to build
+them. Load them with that repo's `scripts/load.sh`, which creates one
+database per dataset with a SELECT-only role, then register each dataset as its
+own source so a cross-source join fails by design.
 
 ## Security posture
 
@@ -239,22 +250,6 @@ fails by design.
   expect the policy to be enough.
 - See `SECURITY.md` for the disclosure policy and the threat model.
 
-## Not included
-
-- No write path.
-- No connection pooling: each call opens its own connection.
-- Postgres only. The policy is engine-neutral and the dialect enum has
-  SQLite/DuckDB/MySQL/MSSQL entries, but only Postgres executes, and the registry
-  rejects other engines.
-- No dashboards, no web UI.
-
-## Why Rust
-
-One binary, no runtime beyond the standard library and a few permissively
-licensed crates. Postgres sends `NUMERIC` as a packed base-10000 wire format,
-decoded here by hand rather than rounded through a float. The decoder is pinned
-by tests against captured wire bytes.
-
 ## Build and test
 
 ```sh
@@ -269,6 +264,12 @@ python3 scripts/e2e_check.py        # protocol checks, stdio + HTTP
 python3 scripts/guardrail_stress.py # policy refusals, caps, masking, renders
 ```
 
+## Why Rust
+
+One binary, no runtime beyond the standard library and a few permissively
+licensed crates. Postgres sends `NUMERIC` as a packed base-10000 wire format,
+decoded here by hand rather than rounded through a float. The decoder is pinned
+by tests against captured wire bytes.
 
 ## Licence
 

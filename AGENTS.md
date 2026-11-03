@@ -62,7 +62,9 @@ allows that.
 
 ## Testing against a realistic dataset
 
-The demo tables are small. `synthetic-financial-data` generates retail banking,
+The demo tables are small.
+[`synthetic-financial-data`](https://github.com/inSourceLabs/synthetic-financial-data)
+generates retail banking,
 non-life insurance and life underwriting datasets with real foreign keys, and its
 `scripts/load.sh` creates one database per dataset with a SELECT-only role.
 Register each dataset as its own source: a join across two sources fails, by
