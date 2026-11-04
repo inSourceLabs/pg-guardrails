@@ -253,6 +253,7 @@ if [ "$MODE" = "release" ]; then
   VERSION="$(sed -n 's/^version = "\([^"]*\)".*/\1/p' Cargo.toml)"
   COMMIT="$(git rev-parse HEAD)"
   DIST="$ROOT/dist"
+  rm -rf "$DIST"
   mkdir -p "$DIST"
 
   if python3 scripts/license_report.py --texts "$DIST/LICENSES" >/dev/null 2>&1; then
@@ -273,7 +274,6 @@ if [ "$MODE" = "release" ]; then
     echo "commit: $COMMIT"
     echo "toolchain: $(rustc --version)"
     echo "build command: cargo build --release"
-    echo "generated: $STAMP"
     echo ""
     echo "sha256 of every file in this archive:"
     cd "$STAGE" && find . -type f -not -name MANIFEST.txt | sort | xargs sha256sum
@@ -306,6 +306,7 @@ if [ "$MODE" = "release" ]; then
     echo "  ok: $(tar -tf "$DIST/$name.tar.gz" | wc -l) entries including the licence texts, no local work included"
   fi
 
+  rm -f "$DIST/$name.tar.gz.asc"
   if gpg --batch --detach-sign -a -o "$DIST/$name.tar.gz.asc" "$DIST/$name.tar.gz" >/dev/null 2>&1; then
     if gpg --verify "$DIST/$name.tar.gz.asc" "$DIST/$name.tar.gz" >/dev/null 2>&1; then
       record "archive signature" PASS
@@ -334,8 +335,11 @@ if [ "$MODE" = "release" ]; then
       echo "  skip: $target (not built; run ./scripts/ci.sh cross)"
       continue
     fi
-    out="$DIST/pg-guardrails-$VERSION-$target"
+    ext=""
+    [ "$target" = x86_64-pc-windows-gnu ] && ext=.exe
+    out="$DIST/pg-guardrails-$VERSION-$target$ext"
     cp "$src" "$out"
+    rm -f "$out.asc"
     if gpg --batch --detach-sign -a -o "$out.asc" "$out" >/dev/null 2>&1; then
       sig="signed"
     else
@@ -354,9 +358,9 @@ if [ "$MODE" = "release" ]; then
     echo ""
     echo "asset | sha256"
     echo "-----|------"
-    for f in "$DIST"/*.tar.gz "$DIST"/*.asc "$DIST"/pg-guardrails-*; do
+    for f in "$DIST"/pg-guardrails-*; do
       [ -f "$f" ] && printf '%s | %s\n' "$(basename "$f")" "$(sha256sum "$f" | cut -c1-64)"
-    done
+    done | sort -u
   } > "$DIST/MANIFEST.txt"
   echo "  manifest: $DIST/MANIFEST.txt"
 fi
